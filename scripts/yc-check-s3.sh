@@ -25,8 +25,8 @@ if ! command -v aws >/dev/null 2>&1; then
   exit 1
 fi
 
-export AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY
+export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
 export AWS_DEFAULT_REGION="$REGION"
 
 echo ">>> Проверка бакета (head-bucket)..."

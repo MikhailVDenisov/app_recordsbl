@@ -21,4 +21,4 @@ set -a
 source "$ENV_FILE"
 set +a
 
-exec "$ROOT/scripts/yc-check-s3.sh"
+exec bash "$ROOT/scripts/yc-check-s3.sh"
