@@ -33,6 +33,12 @@ set -a && source server/.env && set +a
 ./scripts/yc-check-s3.sh
 ```
 
+**Только S3**, подставляя значения из `server/.env`:
+
+```bash
+./scripts/check-s3-from-env.sh
+```
+
 Если `source server/.env` падает из‑за символов в пароле — задайте переменные вручную:
 
 ```bash
