@@ -1,0 +1,9 @@
+**/node_modules/
+**/dist/
+**/.env
+**/build/
+**/.dart_tool/
+**/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/local.properties
