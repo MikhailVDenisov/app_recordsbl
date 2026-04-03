@@ -58,6 +58,7 @@ class Meeting {
     bool? incomplete,
     DateTime? nextRetryAt,
     int? retryAttempt,
+    String? serverBaseUrl,
   }) {
     return Meeting(
       id: id,
@@ -73,7 +74,7 @@ class Meeting {
       completedPartsJson: completedPartsJson ?? this.completedPartsJson,
       lastError: lastError,
       userLogin: userLogin,
-      serverBaseUrl: serverBaseUrl,
+      serverBaseUrl: serverBaseUrl ?? this.serverBaseUrl,
       recordingOffsetMs: recordingOffsetMs,
       incomplete: incomplete ?? this.incomplete,
       nextRetryAt: nextRetryAt ?? this.nextRetryAt,

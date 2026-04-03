@@ -25,7 +25,10 @@ final dioProvider = Provider<Dio>(
 );
 
 final uploadServiceProvider = Provider<UploadService>(
-  (ref) => UploadService(ref.watch(dioProvider)),
+  (ref) => UploadService(
+    ref.watch(dioProvider),
+    ref.watch(settingsRepositoryProvider),
+  ),
 );
 
 final recordingControllerProvider =

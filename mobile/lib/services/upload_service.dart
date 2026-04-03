@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../data/meeting_model.dart';
 import '../data/meeting_repository.dart';
+import '../data/settings_repository.dart';
 
 const _chunkSize = 5 * 1024 * 1024;
 
@@ -26,9 +27,30 @@ class UploadProgress {
 typedef UploadProgressCb = void Function(UploadProgress p);
 
 class UploadService {
-  UploadService(this._dio);
+  UploadService(this._dio, this._settings);
 
   final Dio _dio;
+  final SettingsRepository _settings;
+
+  /// В записи встречи сохранён URL на момент остановки записи; если там был
+  /// localhost (дефолт по умолчанию), а в настройках уже указан сервер — берём из настроек.
+  Future<String> _resolveBaseUrl(Meeting meeting) async {
+    var base = meeting.serverBaseUrl.replaceAll(RegExp(r'/$'), '');
+    if (base.isEmpty || _isLoopbackHost(base)) {
+      base = (await _settings.getServerUrl()).replaceAll(RegExp(r'/$'), '');
+    }
+    if (base.isEmpty) {
+      throw StateError('Укажите URL сервера в настройках');
+    }
+    return base;
+  }
+
+  bool _isLoopbackHost(String url) {
+    final u = Uri.tryParse(url);
+    if (u == null || !u.hasAuthority) return false;
+    final h = u.host.toLowerCase();
+    return h == 'localhost' || h == '127.0.0.1' || h == '::1';
+  }
 
   int _partLength(int part, int total) {
     final start = (part - 1) * _chunkSize;
@@ -50,7 +72,13 @@ class UploadService {
     required MeetingRepository repo,
     UploadProgressCb? onProgress,
   }) async {
-    final base = meeting.serverBaseUrl.replaceAll(RegExp(r'/$'), '');
+    final base = await _resolveBaseUrl(meeting);
+    var m = meeting;
+    if (m.serverBaseUrl.replaceAll(RegExp(r'/$'), '') != base) {
+      m = m.copyWith(serverBaseUrl: base);
+      await repo.upsert(m);
+    }
+
     final file = File(meeting.filePath);
     if (!await file.exists()) {
       throw StateError('Файл не найден');
@@ -58,7 +86,6 @@ class UploadService {
     final size = await file.length();
     if (size == 0) throw StateError('Пустой файл');
 
-    var m = meeting;
     if (m.serverUploadId == null || m.s3Key == null) {
       final reg = await _dio.post<Map<String, dynamic>>(
         '$base/api/v1/meetings/register',
@@ -71,7 +98,6 @@ class UploadService {
           'device': {
             'login': m.userLogin,
             'model': Platform.operatingSystem,
-            'freeDiskBytes': null,
           },
           'recognition': {
             'id': m.id,

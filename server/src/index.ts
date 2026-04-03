@@ -18,7 +18,7 @@ await app.register(cors, { origin: true });
 
 const deviceInfoSchema = z.object({
   model: z.string().optional(),
-  freeDiskBytes: z.number().optional(),
+  freeDiskBytes: z.number().optional().nullable(),
   login: z.string().min(1),
 });
 
