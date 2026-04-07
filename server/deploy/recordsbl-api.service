@@ -12,6 +12,8 @@
 Description=RecordsBL API (Node/Fastify)
 After=network-online.target
 Wants=network-online.target
+# Без ограничения частоты перезапусков (директива относится к [Unit], не к [Service])
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -27,9 +29,6 @@ WorkingDirectory=/home/admin_aist_app_vm/recordsbl/server
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=5
-
-# Не останавливать юнит после серии быстрых падений (по умолчанию systemd может «сдаться»)
-StartLimitIntervalSec=0
 
 # Корректное завершение Fastify
 TimeoutStopSec=30
