@@ -72,6 +72,10 @@ class UploadService {
     required MeetingRepository repo,
     UploadProgressCb? onProgress,
   }) async {
+    if (meeting.uploadStatus == LocalUploadStatus.uploaded) {
+      return;
+    }
+
     final base = await _resolveBaseUrl(meeting);
     var m = meeting;
     if (m.serverBaseUrl.replaceAll(RegExp(r'/$'), '') != base) {
@@ -85,6 +89,13 @@ class UploadService {
     }
     final size = await file.length();
     if (size == 0) throw StateError('Пустой файл');
+
+    final startedAt = DateTime.now();
+    void emit(int sentBytes) {
+      _emitUploadProgress(onProgress, sentBytes, size, startedAt);
+    }
+
+    emit(0);
 
     if (m.serverUploadId == null || m.s3Key == null) {
       final reg = await _dio.post<Map<String, dynamic>>(
@@ -125,7 +136,7 @@ class UploadService {
     final remote = <int, String>{};
     for (final e in (listResp.data!['parts'] as List<dynamic>)) {
       final p = e as Map<String, dynamic>;
-      final n = p['PartNumber'] as int;
+      final n = _partNumberFrom(p['PartNumber']);
       final tag = (p['ETag'] as String).replaceAll('"', '');
       remote[n] = tag;
     }
@@ -134,8 +145,17 @@ class UploadService {
     }
 
     final partCount = (size / _chunkSize).ceil();
-    final raf = await file.open(mode: FileMode.read);
     var uploaded = 0;
+    for (var p = 1; p <= partCount; p++) {
+      if (remote.containsKey(p)) {
+        uploaded = _bytesAfterPart(p, size);
+      } else {
+        break;
+      }
+    }
+    emit(uploaded);
+
+    final raf = await file.open(mode: FileMode.read);
     try {
       for (var p = 1; p <= partCount; p++) {
         if (remote.containsKey(p)) {
@@ -153,6 +173,7 @@ class UploadService {
           data: {'partNumber': p},
         );
         final url = urlResp.data!['url'] as String;
+        final partBase = start;
         final put = await _dio.put<List<int>>(
           url,
           data: buf,
@@ -160,6 +181,11 @@ class UploadService {
             headers: {'Content-Type': 'application/octet-stream'},
             validateStatus: (s) => s != null && s >= 200 && s < 300,
           ),
+          onSendProgress: (sent, total) {
+            final cap = partBase + sent;
+            final cumulative = cap > size ? size : cap;
+            emit(cumulative);
+          },
         );
         var etag = put.headers.value('etag') ?? '';
         etag = etag.replaceAll('"', '');
@@ -168,6 +194,7 @@ class UploadService {
         }
         remote[p] = etag;
         uploaded = _bytesAfterPart(p, size);
+        emit(uploaded);
 
         final json = jsonEncode(
           remote.map((k, v) => MapEntry(k.toString(), v)),
@@ -179,7 +206,6 @@ class UploadService {
         );
         await repo.upsert(m);
 
-        _emitProgress(onProgress, uploaded, size, p, partCount);
         await _dio.patch(
           '$base/api/v1/meetings/${m.id}/progress',
           data: {'uploadedBytes': uploaded},
@@ -209,6 +235,7 @@ class UploadService {
       uploadedBytes: size,
     );
     await repo.upsert(m);
+    emit(size);
   }
 
   Map<int, String> _loadParts(String? json) {
@@ -217,17 +244,34 @@ class UploadService {
     return map.map((k, v) => MapEntry(int.parse(k), v as String));
   }
 
-  void _emitProgress(
+  void _emitUploadProgress(
     UploadProgressCb? cb,
-    int sent,
-    int total,
-    int partIndex,
-    int partCount,
+    int sentBytes,
+    int totalBytes,
+    DateTime startedAt,
   ) {
     if (cb == null) return;
-    final eta = partIndex < partCount
-        ? ((partCount - partIndex) * 2).clamp(1, 3600)
-        : 0;
-    cb(UploadProgress(sentBytes: sent, totalBytes: total, etaSeconds: eta));
+    final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
+    int? etaSeconds;
+    if (elapsedMs > 400 && sentBytes > 0 && sentBytes < totalBytes) {
+      final rate = sentBytes / (elapsedMs / 1000.0);
+      if (rate > 1) {
+        etaSeconds = ((totalBytes - sentBytes) / rate).ceil();
+        if (etaSeconds < 1) etaSeconds = 1;
+        if (etaSeconds > 86400) etaSeconds = null;
+      }
+    }
+    cb(UploadProgress(
+      sentBytes: sentBytes,
+      totalBytes: totalBytes,
+      etaSeconds: etaSeconds,
+    ));
+  }
+
+  int _partNumberFrom(Object? v) {
+    if (v == null) throw StateError('PartNumber отсутствует');
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.parse(v.toString());
   }
 }

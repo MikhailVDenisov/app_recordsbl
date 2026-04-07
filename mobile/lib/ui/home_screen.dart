@@ -154,12 +154,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _upload(BuildContext context, Meeting m) async {
+    if (m.uploadStatus == LocalUploadStatus.uploaded) return;
+
     final repo = ref.read(meetingRepositoryProvider);
     final upload = ref.read(uploadServiceProvider);
+    final file = File(m.filePath);
+    int totalBytes = m.fileSizeBytes;
+    if (await file.exists()) {
+      totalBytes = await file.length();
+    }
     setState(() {
       _uploadProgress[m.id] = UploadProgress(
-        sentBytes: m.uploadedBytes,
-        totalBytes: m.fileSizeBytes,
+        sentBytes: m.uploadedBytes.clamp(0, totalBytes),
+        totalBytes: totalBytes > 0 ? totalBytes : 1,
         etaSeconds: null,
       );
     });
@@ -266,18 +273,22 @@ class _MeetingTile extends StatelessWidget {
               Text('Место: ${meeting.meetingPlace}'),
               Text('Длительность: ${formatDurationSeconds(meeting.durationSeconds)}'),
               Text('Статус: $status'),
-              if (progress != null &&
-                  meeting.uploadStatus == LocalUploadStatus.uploading)
+              if (progress != null) ...[
                 LinearProgressIndicator(value: progress!.fraction),
-              if (progress != null)
+                const SizedBox(height: 4),
                 Text(
-                  '${(progress!.fraction * 100).toStringAsFixed(0)}% '
-                  '${progress!.etaSeconds != null ? '~ осталось ${progress!.etaSeconds} с' : ''}',
+                  '${formatMegabytesFromBytes(progress!.sentBytes)} '
+                  'из ${formatMegabytesFromBytes(progress!.totalBytes)} '
+                  '(${((progress!.fraction) * 100).toStringAsFixed(0)}%)'
+                  '${progress!.etaSeconds != null ? ' · ~${progress!.etaSeconds} с' : ''}',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ],
               Row(
                 children: [
                   TextButton(onPressed: onPlay, child: const Text('Прослушать')),
-                  TextButton(onPressed: onUpload, child: const Text('Выгрузить')),
+                  if (meeting.uploadStatus != LocalUploadStatus.uploaded)
+                    TextButton(onPressed: onUpload, child: const Text('Выгрузить')),
                   TextButton(
                     onPressed: confirmDelete,
                     child: const Text('Удалить'),

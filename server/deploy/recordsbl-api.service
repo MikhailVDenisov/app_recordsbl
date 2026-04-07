@@ -1,0 +1,44 @@
+# Установка на ВМ (Ubuntu):
+# 1) Подставьте пути: каталог с server/, пользователь Linux, путь к node (which node).
+# 2) sudo cp recordsbl-api.service /etc/systemd/system/
+# 3) sudo systemctl daemon-reload
+# 4) sudo systemctl enable --now recordsbl-api
+# 5) sudo journalctl -u recordsbl-api -f
+#
+# Перед первым запуском в каталоге server: npm ci && npm run build
+# Переменные окружения читаются из server/.env (dotenv в приложении).
+
+[Unit]
+Description=RecordsBL API (Node/Fastify)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin_aist_app_vm
+Group=admin_aist_app_vm
+WorkingDirectory=/home/admin_aist_app_vm/recordsbl/server
+
+# Явный PATH, если node не в стандартном месте — раскомментируйте и поправьте:
+# Environment=PATH=/usr/local/bin:/usr/bin
+
+# Node из apt — обычно /usr/bin/node. При nvm укажите полный путь, например:
+# ExecStart=/home/admin_aist_app_vm/.nvm/versions/node/v22.0.0/bin/node dist/index.js
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+# Не останавливать юнит после серии быстрых падений (по умолчанию systemd может «сдаться»)
+StartLimitIntervalSec=0
+
+# Корректное завершение Fastify
+TimeoutStopSec=30
+KillMode=mixed
+
+# Логи: journalctl -u recordsbl-api
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=recordsbl-api
+
+[Install]
+WantedBy=multi-user.target
