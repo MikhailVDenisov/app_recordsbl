@@ -10,7 +10,10 @@ import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const endpoint = process.env.S3_ENDPOINT;
-const region = process.env.S3_REGION ?? "ru-central1";
+// Cloud.ru Object Storage использует регион вида `ru-central1` (без дефиса).
+// Если в .env по ошибке указали `ru-central-1`, нормализуем.
+const regionRaw = process.env.S3_REGION ?? "ru-central1";
+const region = regionRaw === "ru-central-1" ? "ru-central1" : regionRaw;
 const bucket = process.env.S3_BUCKET ?? "";
 
 export const s3 = new S3Client({
@@ -27,7 +30,9 @@ export const s3 = new S3Client({
     accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
   },
-  forcePathStyle: false,
+  // Для S3-совместимых провайдеров часто надёжнее path-style, чтобы не зависеть от
+  // bucketname.endpoint DNS и wildcard сертификатов.
+  forcePathStyle: true,
 });
 
 export function buildObjectKey(meetingId: string, filename: string): string {
