@@ -32,25 +32,6 @@ class UploadService {
   final Dio _dio;
   final SettingsRepository _settings;
 
-  Future<void> _checkHealth(String base) async {
-    try {
-      await _dio.get<Map<String, dynamic>>(
-        '$base/health',
-        options: Options(
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
-    } on DioException catch (e) {
-      final u = Uri.tryParse(base);
-      final host = u?.host ?? base;
-      final hint = u != null && (u.scheme == 'https')
-          ? 'Проверьте, что HTTPS доступен и сертификат валидный.'
-          : 'Проверьте, что адрес/порт доступны из сети телефона.';
-      throw StateError('Сервер недоступен ($host). $hint (${e.type})');
-    }
-  }
-
   /// В записи встречи сохранён URL на момент остановки записи; если там был
   /// localhost (дефолт по умолчанию), а в настройках уже указан сервер — берём из настроек.
   Future<String> _resolveBaseUrl(Meeting meeting) async {
@@ -96,7 +77,6 @@ class UploadService {
     }
 
     final base = await _resolveBaseUrl(meeting);
-    await _checkHealth(base);
     var m = meeting;
     if (m.serverBaseUrl.replaceAll(RegExp(r'/$'), '') != base) {
       m = m.copyWith(serverBaseUrl: base);

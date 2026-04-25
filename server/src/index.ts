@@ -16,20 +16,6 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: true });
 
-app.setErrorHandler((err, req, reply) => {
-  req.log.error({ err }, "Unhandled error");
-  const status = (err as any)?.statusCode ?? 500;
-  const name = (err as any)?.name ?? "Error";
-  const message = (err as any)?.message ?? "Internal error";
-  reply.code(status).send({
-    error: {
-      name,
-      message,
-      statusCode: status,
-    },
-  });
-});
-
 const deviceInfoSchema = z.object({
   model: z.string().optional(),
   freeDiskBytes: z.number().optional().nullable(),

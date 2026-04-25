@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/meeting_model.dart';
@@ -16,43 +15,13 @@ final settingsRepositoryProvider =
     Provider<SettingsRepository>((ref) => SettingsRepository());
 
 final dioProvider = Provider<Dio>(
-  (ref) {
-    final dio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(minutes: 5),
-        receiveTimeout: const Duration(minutes: 30),
-        sendTimeout: const Duration(minutes: 30),
-      ),
-    );
-
-    // Диагностика: чтобы видеть в консоли, на каком запросе ломается выгрузка.
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (o, h) {
-          debugPrint('[HTTP] → ${o.method} ${o.uri}');
-          h.next(o);
-        },
-        onResponse: (r, h) {
-          debugPrint('[HTTP] ← ${r.statusCode} ${r.requestOptions.uri}');
-          h.next(r);
-        },
-        onError: (e, h) {
-          final data = e.response?.data;
-          if (data != null) {
-            debugPrint('[HTTP] body: $data');
-          }
-          debugPrint(
-            '[HTTP] ✕ ${e.type} ${e.response?.statusCode ?? '-'} '
-            '${e.requestOptions.method} ${e.requestOptions.uri} '
-            '${e.message}',
-          );
-          h.next(e);
-        },
-      ),
-    );
-
-    return dio;
-  },
+  (ref) => Dio(
+    BaseOptions(
+      connectTimeout: const Duration(minutes: 5),
+      receiveTimeout: const Duration(minutes: 30),
+      sendTimeout: const Duration(minutes: 30),
+    ),
+  ),
 );
 
 final uploadServiceProvider = Provider<UploadService>(
