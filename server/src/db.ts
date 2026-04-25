@@ -5,11 +5,19 @@ const { Pool } = pg;
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 10,
+  // Чтобы API не "висло" бесконечно при проблемах с БД/сетью.
+  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis: 30_000,
 });
 
 export async function query<T extends pg.QueryResultRow>(
   text: string,
   params?: unknown[]
 ): Promise<pg.QueryResult<T>> {
-  return pool.query<T>(text, params);
+  return pool.query<T>({
+    text,
+    values: params,
+    // Таймаут именно выполнения запроса (мс). Если БД "подвисла" — быстрее увидим ошибку.
+    query_timeout: 20_000,
+  });
 }
