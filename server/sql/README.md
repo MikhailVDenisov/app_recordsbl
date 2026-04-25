@@ -5,6 +5,7 @@
 | Файл | Назначение |
 |------|------------|
 | `001_init.sql` | Таблица `meetings` и индексы |
+| `002_external_consumed.sql` | Поле `external_consumed_at` (забор файла сторонней системой) |
 
 ## Таблица `meetings`
 
@@ -23,6 +24,7 @@
 | `metadata` | JSONB | Доп. данные для распознавания / диаризации. |
 | `device_info` | JSONB | Информация об устройстве. |
 | `created_at` / `updated_at` | TIMESTAMPTZ | Служебные метки времени. |
+| `external_consumed_at` | TIMESTAMPTZ | `NULL` — файл ещё не забран сторонней системой; иначе — когда забрали. |
 
 ## Применение
 

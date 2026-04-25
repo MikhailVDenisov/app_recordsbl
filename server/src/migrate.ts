@@ -7,9 +7,13 @@ import { pool } from "./db.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
-  const sql = await readFile(join(__dirname, "../sql/001_init.sql"), "utf8");
-  await pool.query(sql);
-  console.log("Migration applied.");
+  const files = ["001_init.sql", "002_external_consumed.sql"];
+  for (const name of files) {
+    const sql = await readFile(join(__dirname, "../sql", name), "utf8");
+    await pool.query(sql);
+    console.log(`Applied ${name}`);
+  }
+  console.log("Migrations done.");
   await pool.end();
 }
 
