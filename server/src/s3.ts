@@ -16,6 +16,9 @@ const bucket = process.env.S3_BUCKET ?? "";
 export const s3 = new S3Client({
   region,
   endpoint,
+  // Чтобы /register не "висел" минутами на ретраях сети до S3.
+  // Лучше быстро упасть с ошибкой и показать диагноз.
+  maxAttempts: 1,
   requestHandler: new NodeHttpHandler({
     connectionTimeout: 5_000,
     socketTimeout: 20_000,
