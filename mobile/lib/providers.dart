@@ -37,6 +37,10 @@ final dioProvider = Provider<Dio>(
           h.next(r);
         },
         onError: (e, h) {
+          final data = e.response?.data;
+          if (data != null) {
+            debugPrint('[HTTP] body: $data');
+          }
           debugPrint(
             '[HTTP] ✕ ${e.type} ${e.response?.statusCode ?? '-'} '
             '${e.requestOptions.method} ${e.requestOptions.uri} '
