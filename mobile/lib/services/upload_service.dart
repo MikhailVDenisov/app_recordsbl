@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:path/path.dart' as p;
 
 import '../data/meeting_model.dart';
 import '../data/meeting_repository.dart';
@@ -31,6 +32,19 @@ class UploadService {
 
   final Dio _dio;
   final SettingsRepository _settings;
+
+  ({String fileName, String contentType}) _uploadMeta(Meeting m) {
+    final ext = p.extension(m.filePath).toLowerCase();
+    final fileName = '${m.id}${ext.isEmpty ? '.wav' : ext}';
+    final contentType = switch (ext) {
+      '.flac' => 'audio/flac',
+      '.wav' => 'audio/wav',
+      '.m4a' => 'audio/mp4',
+      '.aac' => 'audio/aac',
+      _ => 'application/octet-stream',
+    };
+    return (fileName: fileName, contentType: contentType);
+  }
 
   /// В записи встречи сохранён URL на момент остановки записи; если там был
   /// localhost (дефолт по умолчанию), а в настройках уже указан сервер — берём из настроек.
@@ -98,14 +112,15 @@ class UploadService {
     emit(0);
 
     if (m.serverUploadId == null || m.s3Key == null) {
+      final meta = _uploadMeta(m);
       final reg = await _dio.post<Map<String, dynamic>>(
         '$base/api/v1/meetings/register',
         data: {
           'id': m.id,
           'userLogin': m.userLogin,
-          'fileName': '${m.id}.wav',
+          'fileName': meta.fileName,
           'fileSizeBytes': size,
-          'contentType': 'audio/wav',
+          'contentType': meta.contentType,
           'device': {
             'login': m.userLogin,
             'model': Platform.operatingSystem,

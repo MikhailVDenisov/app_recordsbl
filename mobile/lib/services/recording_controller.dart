@@ -10,7 +10,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
-import '../audio/wav_header.dart';
 import '../core/meeting_place.dart';
 import '../data/meeting_model.dart';
 import '../data/meeting_repository.dart';
@@ -79,18 +78,21 @@ class RecordingController extends StateNotifier<RecordingState> {
   final MeetingRepository _repo;
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<Uint8List>? _pcmSub;
+  StreamSubscription<Amplitude>? _ampSub;
   StreamSubscription<void>? _interruptSub;
   Timer? _rmsTimer;
   Timer? _durationTimer;
   final Stopwatch _segment = Stopwatch();
   Duration _pausedAccum = Duration.zero;
-  final BytesBuilder _pcm = BytesBuilder(copy: false);
   DateTime? _startedAt;
   final List<double> _rmsWindow = [];
   String? _currentMeetingId;
   String? _currentPlace;
   String? _userLogin;
   String? _serverUrl;
+  String? _currentFilePath;
+  DateTime? _lastSizePollAt;
+  int _lastKnownFileBytes = 0;
   /// Игнорировать прерывания сразу после старта/возобновления (ложные события на Android).
   DateTime? _ignoreInterruptionUntil;
 
@@ -126,13 +128,32 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   Duration _totalElapsed() => _pausedAccum + _segment.elapsed;
 
-  /// Свободное место с учётом RAM-буфера, который при «Стоп» займёт диск.
+  /// Свободное место с учётом оценки роста файла записи.
   double? _effectiveFreeMegabytes() {
     final raw = _diskFreeRawMb;
     if (raw == null) return null;
-    final pendingMb = _pcm.length / (1024 * 1024);
+    final pendingMb = _lastKnownFileBytes / (1024 * 1024);
     final v = raw - pendingMb;
     return v < 0 ? 0.0 : v;
+  }
+
+  Future<void> _pollFileSize() async {
+    final path = _currentFilePath;
+    if (path == null) return;
+    final now = DateTime.now();
+    final last = _lastSizePollAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 1)) {
+      return;
+    }
+    _lastSizePollAt = now;
+    try {
+      final f = File(path);
+      if (await f.exists()) {
+        _lastKnownFileBytes = await f.length();
+      }
+    } catch (_) {
+      // ignore polling errors (file may be locked or not yet created)
+    }
   }
 
   Future<bool> startRecording() async {
@@ -154,19 +175,27 @@ class RecordingController extends StateNotifier<RecordingState> {
 
     _currentPlace ??= kMeetingPlaces.first;
     _currentMeetingId = const Uuid().v4();
-    _pcm.clear();
     _pausedAccum = Duration.zero;
     _startedAt = DateTime.now();
     _rmsWindow.clear();
     _segment
       ..reset()
       ..start();
+    _lastKnownFileBytes = 0;
+    _lastSizePollAt = null;
 
     await configureRecordingSession();
 
-    final stream = await _recorder.startStream(
+    final id = _currentMeetingId!;
+    final dir = await getApplicationDocumentsDirectory();
+    final useFlac = !Platform.isIOS;
+    final ext = useFlac ? 'flac' : 'wav';
+    final path = p.join(dir.path, '$id.$ext');
+    _currentFilePath = path;
+
+    await _recorder.start(
       RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
+        encoder: useFlac ? AudioEncoder.flac : AudioEncoder.wav,
         sampleRate: _sampleRate,
         numChannels: _channels,
         androidConfig: Platform.isAndroid
@@ -178,12 +207,15 @@ class RecordingController extends StateNotifier<RecordingState> {
               )
             : const AndroidRecordConfig(),
       ),
+      path: path,
     );
 
-    _pcmSub = stream.listen((chunk) {
-      _pcm.add(chunk);
-      final r = rmsPcm16(chunk);
-      _rmsWindow.add(r);
+    _ampSub?.cancel();
+    _ampSub = _recorder.onAmplitudeChanged(const Duration(milliseconds: 100)).listen((a) {
+      // Map dBFS to a stable 0..1-ish value for UI; keep it simple and monotonic.
+      final v = (a.current + 60) / 60;
+      final clamped = v < 0 ? 0.0 : (v > 1 ? 1.0 : v);
+      _rmsWindow.add(clamped);
       if (_rmsWindow.length > _rmsWindowSize) {
         _rmsWindow.removeAt(0);
       }
@@ -196,9 +228,10 @@ class RecordingController extends StateNotifier<RecordingState> {
 
     _durationTimer?.cancel();
     _durationTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      unawaited(_pollFileSize());
       state = state.copyWith(
         duration: _totalElapsed(),
-        recordedBytes: _pcm.length,
+        recordedBytes: _lastKnownFileBytes,
         freeDiskMb: _effectiveFreeMegabytes(),
       );
     });
@@ -268,7 +301,7 @@ class RecordingController extends StateNotifier<RecordingState> {
     state = state.copyWith(
       phase: RecordingPhase.paused,
       duration: _pausedAccum,
-      recordedBytes: _pcm.length,
+      recordedBytes: _lastKnownFileBytes,
       freeDiskMb: _effectiveFreeMegabytes(),
     );
   }
@@ -280,9 +313,10 @@ class RecordingController extends StateNotifier<RecordingState> {
         DateTime.now().add(_interruptionGrace);
     await _recorder.resume();
     _durationTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      unawaited(_pollFileSize());
       state = state.copyWith(
         duration: _totalElapsed(),
-        recordedBytes: _pcm.length,
+        recordedBytes: _lastKnownFileBytes,
         freeDiskMb: _effectiveFreeMegabytes(),
       );
     });
@@ -303,25 +337,18 @@ class RecordingController extends StateNotifier<RecordingState> {
     _rmsTimer?.cancel();
     _durationTimer?.cancel();
     await _pcmSub?.cancel();
+    await _ampSub?.cancel();
     await _recorder.stop();
     _pcmSub = null;
+    _ampSub = null;
     _segment.stop();
 
     final id = _currentMeetingId!;
     final place = _currentPlace ?? kMeetingPlaces.first;
     final started = _startedAt ?? DateTime.now();
     final duration = _totalElapsed().inSeconds;
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, '$id.wav');
-    final raw = _pcm.takeBytes();
-    final wav = buildWavFromPcm(
-      pcmBytes: raw,
-      sampleRate: _sampleRate,
-      numChannels: _channels,
-      bitsPerSample: 16,
-    );
+    final path = _currentFilePath ?? (p.join((await getApplicationDocumentsDirectory()).path, '$id.flac'));
     final f = File(path);
-    await f.writeAsBytes(wav, flush: true);
     final size = await f.length();
 
     final meeting = Meeting(
@@ -340,8 +367,8 @@ class RecordingController extends StateNotifier<RecordingState> {
     );
     await _repo.upsert(meeting);
 
-    _pcm.clear();
     _currentMeetingId = null;
+    _currentFilePath = null;
     _diskFreeRawMb = null;
     state = const RecordingState(phase: RecordingPhase.idle);
   }
@@ -352,6 +379,7 @@ class RecordingController extends StateNotifier<RecordingState> {
     _durationTimer?.cancel();
     _interruptSub?.cancel();
     _pcmSub?.cancel();
+    _ampSub?.cancel();
     unawaited(_recorder.dispose());
     super.dispose();
   }
