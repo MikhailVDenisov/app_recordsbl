@@ -6,6 +6,7 @@ import {
   S3Client,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const endpoint = process.env.S3_ENDPOINT;
@@ -15,6 +16,10 @@ const bucket = process.env.S3_BUCKET ?? "";
 export const s3 = new S3Client({
   region,
   endpoint,
+  requestHandler: new NodeHttpHandler({
+    connectionTimeout: 5_000,
+    socketTimeout: 20_000,
+  }),
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
