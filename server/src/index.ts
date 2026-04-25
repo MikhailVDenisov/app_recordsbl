@@ -55,7 +55,7 @@ app.post("/api/v1/meetings/register", async (req, reply) => {
   const existing = await query<{
     s3_key: string | null;
     upload_id: string | null;
-  }>(`SELECT s3_key, upload_id FROM meetings WHERE id = $1`, [b.id]);
+  }>(`SELECT s3_key, upload_id FROM meetings WHERE id = ?`, [b.id]);
 
   let uploadId: string;
   let s3KeyOut = key;
@@ -70,7 +70,7 @@ app.post("/api/v1/meetings/register", async (req, reply) => {
       `INSERT INTO meetings (
       id, user_id, status, s3_key, upload_id, uploaded_bytes, file_size_bytes,
       meeting_place, duration_seconds, recording_started_at, metadata, device_info
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT (id) DO UPDATE SET
       status = EXCLUDED.status,
       s3_key = COALESCE(meetings.s3_key, EXCLUDED.s3_key),
@@ -81,7 +81,7 @@ app.post("/api/v1/meetings/register", async (req, reply) => {
       recording_started_at = EXCLUDED.recording_started_at,
       metadata = EXCLUDED.metadata,
       device_info = EXCLUDED.device_info,
-      updated_at = NOW()`,
+      updated_at = CURRENT_TIMESTAMP`,
       [
         b.id,
         b.userLogin,
@@ -126,7 +126,7 @@ app.post("/api/v1/meetings/:id/presign-part", async (req, reply) => {
     return reply.code(400).send({ error: parsed.error.flatten() });
   }
   const { rows } = await query<{ s3_key: string; upload_id: string }>(
-    `SELECT s3_key, upload_id FROM meetings WHERE id = $1`,
+    `SELECT s3_key, upload_id FROM meetings WHERE id = ?`,
     [id]
   );
   if (!rows.length || !rows[0].upload_id) {
@@ -143,7 +143,7 @@ app.post("/api/v1/meetings/:id/presign-part", async (req, reply) => {
 app.get("/api/v1/meetings/:id/parts", async (req, reply) => {
   const id = z.string().uuid().parse((req.params as { id: string }).id);
   const { rows } = await query<{ s3_key: string; upload_id: string }>(
-    `SELECT s3_key, upload_id FROM meetings WHERE id = $1`,
+    `SELECT s3_key, upload_id FROM meetings WHERE id = ?`,
     [id]
   );
   if (!rows.length || !rows[0].upload_id) {
@@ -169,7 +169,7 @@ app.post("/api/v1/meetings/:id/complete", async (req, reply) => {
     return reply.code(400).send({ error: parsed.error.flatten() });
   }
   const { rows } = await query<{ s3_key: string; upload_id: string; file_size_bytes: number }>(
-    `SELECT s3_key, upload_id, file_size_bytes FROM meetings WHERE id = $1`,
+    `SELECT s3_key, upload_id, file_size_bytes FROM meetings WHERE id = ?`,
     [id]
   );
   if (!rows.length || !rows[0].upload_id) {
@@ -177,8 +177,8 @@ app.post("/api/v1/meetings/:id/complete", async (req, reply) => {
   }
   await completeMultipartUpload(rows[0].s3_key, rows[0].upload_id, parsed.data.parts);
   await query(
-    `UPDATE meetings SET status = 'uploaded', uploaded_bytes = $2, updated_at = NOW() WHERE id = $1`,
-    [id, rows[0].file_size_bytes ?? 0]
+    `UPDATE meetings SET status = 'uploaded', uploaded_bytes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [rows[0].file_size_bytes ?? 0, id]
   );
   return { ok: true, status: "uploaded" };
 });
@@ -194,8 +194,8 @@ app.patch("/api/v1/meetings/:id/progress", async (req, reply) => {
     return reply.code(400).send({ error: parsed.error.flatten() });
   }
   await query(
-    `UPDATE meetings SET status = 'uploading', uploaded_bytes = $2, updated_at = NOW() WHERE id = $1`,
-    [id, parsed.data.uploadedBytes]
+    `UPDATE meetings SET status = 'uploading', uploaded_bytes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [parsed.data.uploadedBytes, id]
   );
   return { ok: true };
 });
@@ -211,9 +211,19 @@ app.patch("/api/v1/meetings/:id/status", async (req, reply) => {
   if (!parsed.success) {
     return reply.code(400).send({ error: parsed.error.flatten() });
   }
+  const current = await query<{ metadata: string | null }>(
+    `SELECT metadata FROM meetings WHERE id = ?`,
+    [id]
+  );
+  const existingMeta =
+    current.rows.length && current.rows[0].metadata
+      ? (JSON.parse(current.rows[0].metadata) as Record<string, unknown>)
+      : {};
+  const nextMeta = { ...existingMeta, lastError: parsed.data.message ?? null };
+
   await query(
-    `UPDATE meetings SET status = $2, metadata = metadata || $3::jsonb, updated_at = NOW() WHERE id = $1`,
-    [id, parsed.data.status, JSON.stringify({ lastError: parsed.data.message ?? null })]
+    `UPDATE meetings SET status = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [parsed.data.status, JSON.stringify(nextMeta), id]
   );
   return { ok: true };
 });

@@ -1,4 +1,4 @@
-# Схема PostgreSQL
+# Схема SQLite
 
 ## Файл миграции
 
@@ -11,7 +11,7 @@
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `id` | UUID | Идентификатор записи (генерируется на клиенте). |
+| `id` | TEXT (UUID) | Идентификатор записи (генерируется на клиенте). |
 | `user_id` | TEXT | Логин пользователя в сети компании. |
 | `status` | TEXT | См. ограничение CHECK в SQL: черновик, выгрузка, ошибка, обработка ASR и т.д. |
 | `s3_key` | TEXT | Путь к объекту в S3-совместимом бакете (Object Storage). |
@@ -20,19 +20,19 @@
 | `file_size_bytes` | BIGINT | Ожидаемый размер файла. |
 | `meeting_place` | TEXT | Место встречи (строка из списка в приложении). |
 | `duration_seconds` | INTEGER | Длительность записи. |
-| `recording_started_at` | TIMESTAMPTZ | Время начала записи (как прислал клиент). |
-| `metadata` | JSONB | Доп. данные для распознавания / диаризации. |
-| `device_info` | JSONB | Информация об устройстве. |
-| `created_at` / `updated_at` | TIMESTAMPTZ | Служебные метки времени. |
-| `external_consumed_at` | TIMESTAMPTZ | `NULL` — файл ещё не забран сторонней системой; иначе — когда забрали. |
+| `recording_started_at` | TEXT | Время начала записи (как прислал клиент). |
+| `metadata` | TEXT (JSON) | Доп. данные для распознавания / диаризации. |
+| `device_info` | TEXT (JSON) | Информация об устройстве. |
+| `created_at` / `updated_at` | TEXT | Служебные метки времени (CURRENT_TIMESTAMP). |
+| `external_consumed_at` | TEXT | `NULL` — файл ещё не забран сторонней системой; иначе — когда забрали. |
 
 ## Применение
 
 ```bash
 cd server
-cp .env.example .env   # заполните DATABASE_URL
+cp .env.example .env   # заполните SQLITE_PATH
 npm install
 npm run db:migrate
 ```
 
-`DATABASE_URL` для Managed PostgreSQL обычно с `sslmode=require` (см. `docs/postgresql-cloud-ru.md`).
+Задайте `SQLITE_PATH` в `server/.env` (по умолчанию `./data/recordsbl.sqlite`).

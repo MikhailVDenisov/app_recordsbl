@@ -1,15 +1,14 @@
 # RecordsBL — запись встреч и выгрузка в S3-совместимое хранилище
 
-Монорепозиторий: **API (Node.js + PostgreSQL + S3-compatible)** и **мобильное приложение (Flutter)** с возобновляемой multipart-загрузкой.
+Монорепозиторий: **API (Node.js + SQLite + S3-compatible)** и **мобильное приложение (Flutter)** с возобновляемой multipart-загрузкой.
 
 ## Сервер
 
-**PostgreSQL в Cloud.ru (или любой Managed PostgreSQL):** пошаговая инструкция — [docs/postgresql-cloud-ru.md](docs/postgresql-cloud-ru.md). Схема таблиц и описание полей — [server/sql/README.md](server/sql/README.md).
+**SQLite на диске ВМ с API:** файл БД задаётся через `SQLITE_PATH` в `server/.env`. Схема таблиц и описание полей — [server/sql/README.md](server/sql/README.md).
 
-**ВМ в Evolution для API** (та же подсеть, что и PostgreSQL): ОС, vCPU/RAM, диск, порты, Node.js — [docs/vm-api-evolution-cloud-ru.md](docs/vm-api-evolution-cloud-ru.md).
+**ВМ в Evolution для API:** ОС, vCPU/RAM, диск, порты, Node.js — [docs/vm-api-evolution-cloud-ru.md](docs/vm-api-evolution-cloud-ru.md).
 
-1. Поднимите PostgreSQL (например `docker compose up -d` или Managed PostgreSQL в [Cloud.ru](https://cloud.ru/) / другом облаке). В Cloud.ru API обычно ставят на **ВМ в той же подсети**, что и БД — см. ссылку выше.
-2. Скопируйте `server/.env.example` в `server/.env`, укажите `DATABASE_URL` и креды **Object Storage** (например [Cloud.ru Object Storage](https://cloud.ru/docs/s3e/) — S3-совместимый API).
+1. Скопируйте `server/.env.example` в `server/.env`, укажите `SQLITE_PATH` и креды **Object Storage** (например [Cloud.ru Object Storage](https://cloud.ru/docs/s3e/) — S3-совместимый API).
 3. Установите зависимости и миграции:
 
 ```bash

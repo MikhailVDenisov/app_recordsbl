@@ -1,17 +1,15 @@
 -- =============================================================================
 -- Схема БД для сервиса записей встреч (RecordsBL API)
 -- Применение: из корня server — npm run db:migrate
---             или: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f server/sql/001_init.sql
+--             (SQLite) файл задаётся через SQLITE_PATH в server/.env
 -- =============================================================================
 -- Таблица meetings — метаданные записи, статус выгрузки в Object Storage,
 -- идентификатор multipart-загрузки S3 для возобновления.
 -- =============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE TABLE IF NOT EXISTS meetings (
   -- UUID записи, создаётся на клиенте (для идемпотентной регистрации и multipart)
-  id UUID PRIMARY KEY,
+  id TEXT PRIMARY KEY,
 
   -- Логин пользователя из настроек приложения (компания)
   user_id TEXT NOT NULL,
@@ -32,16 +30,16 @@ CREATE TABLE IF NOT EXISTS meetings (
 
   meeting_place TEXT,
   duration_seconds INTEGER,
-  recording_started_at TIMESTAMPTZ,
+  recording_started_at TEXT,
 
   -- JSON: распознавание (id, meetingPlace, timestamps, offset для диаризации)
-  metadata JSONB NOT NULL DEFAULT '{}',
+  metadata TEXT NOT NULL DEFAULT '{}',
 
   -- JSON: модель устройства, свободное место, логин и т.д.
-  device_info JSONB NOT NULL DEFAULT '{}',
+  device_info TEXT NOT NULL DEFAULT '{}',
 
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_meetings_user ON meetings(user_id);

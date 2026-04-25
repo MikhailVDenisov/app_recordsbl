@@ -1,6 +1,10 @@
-# Managed PostgreSQL в Cloud.ru
+# (Legacy) Managed PostgreSQL в Cloud.ru
 
-Пошаговая инструкция для кластера БД, сети и подключения к нему из API (`server/`). Названия пунктов меню в [личном кабинете Cloud.ru](https://console.cloud.ru/) могут слегка отличаться — ориентируйтесь на [документацию Managed PostgreSQL](https://cloud.ru/docs/paas-postgresql/).
+Этот документ оставлен для истории. В текущей версии проекта сервер использует **SQLite (файл на диске ВМ)** и **не требует Managed PostgreSQL**.
+
+Если вам всё же нужен managed SQL (например, для HA и горизонтального масштабирования API), можно вернуться к PostgreSQL и адаптировать код обратно.
+
+Ниже — старая инструкция для кластера PostgreSQL, сети и подключения к нему из API (`server/`). Названия пунктов меню в [личном кабинете Cloud.ru](https://console.cloud.ru/) могут слегка отличаться — ориентируйтесь на [документацию Managed PostgreSQL](https://cloud.ru/docs/paas-postgresql/).
 
 Архитектурно это тот же **PostgreSQL + строка `DATABASE_URL`** для бэкенда; у Managed PostgreSQL® в Evolution **нет прямого доступа к кластеру из интернета** — см. раздел ниже.
 

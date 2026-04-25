@@ -2,10 +2,7 @@
 -- NULL = ещё не забрано; NOT NULL = забрано в указанный момент.
 
 ALTER TABLE meetings
-  ADD COLUMN IF NOT EXISTS external_consumed_at TIMESTAMPTZ NULL;
-
-COMMENT ON COLUMN meetings.external_consumed_at IS
-  'Метка времени: файл забран сторонней системой из хранилища';
+  ADD COLUMN IF NOT EXISTS external_consumed_at TEXT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_meetings_external_pending
   ON meetings (status, created_at)

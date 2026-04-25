@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Подряд: PostgreSQL + S3 (Object Storage). Подхватывает server/.env из корня репозитория, если файл есть.
+# Подряд: SQLite + S3 (Object Storage). Подхватывает server/.env из корня репозитория, если файл есть.
 #
 #   chmod +x scripts/*.sh
 #   ./scripts/yc-check-all.sh
 #
-# Если пароль в .env содержит спецсимволы и source ломается — экспортируйте переменные вручную
-# и запускайте yc-check-postgres.sh и yc-check-s3.sh по отдельности.
+# Если в .env есть символы, мешающие source — экспортируйте переменные вручную
+# и запускайте yc-check-sqlite.sh и yc-check-s3.sh по отдельности.
 
 set -euo pipefail
 
@@ -23,7 +23,7 @@ else
 fi
 
 echo ""
-"${ROOT}/scripts/yc-check-postgres.sh"
+"${ROOT}/scripts/yc-check-sqlite.sh"
 echo ""
 "${ROOT}/scripts/yc-check-s3.sh"
 echo ""
