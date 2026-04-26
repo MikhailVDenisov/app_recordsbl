@@ -38,6 +38,13 @@ async function main() {
     console.log(`Applied ${name}`);
   }
 
+  {
+    const name = "003_meeting_places.sql";
+    const sql = await readFile(join(__dirname, "../sql", name), "utf8");
+    db.exec(sql);
+    console.log(`Applied ${name}`);
+  }
+
   console.log("Migrations done.");
   db.close();
 }

@@ -65,22 +65,16 @@ app.get("/api/v1/health/check", async (_req, reply) => {
   return { ok: true, message: "Проверка прошла успешно" };
 });
 
-const meetingPlaces = [
-  { id: 1, name: 'Вне офиса (ЦО)' },
-  { id: 2, name: 'Переговорная "Байкал"' },
-  { id: 3, name: 'Переговорная "Белуха"' },
-  { id: 4, name: 'Переговорная "Катунь"' },
-  { id: 5, name: 'Переговорная "Конференцзал"' },
-  { id: 6, name: 'Переговорная "Красная поляна"' },
-  { id: 7, name: 'Переговорная "Москва"' },
-  { id: 8, name: 'Переговорная "Саяны"' },
-  { id: 9, name: 'Переговорная "Север"' },
-  { id: 10, name: 'Переговорная "Юг"' },
-  { id: 11, name: 'Переговорная "Запад"' },
-  { id: 12, name: 'Переговорная "Ярославль"' },
-].slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
-
-app.get("/api/v1/meeting-places", async () => ({ places: meetingPlaces }));
+app.get("/api/v1/meeting-places", async (_req, reply) => {
+  try {
+    const out = await query<{ id: number; name: string }>(
+      `SELECT id, name FROM meeting_places ORDER BY name ASC`
+    );
+    return { places: out.rows };
+  } catch (e) {
+    return reply.code(500).send({ ok: false, message: String(e) });
+  }
+});
 
 /** Step 1: register meeting + init multipart on S3 (идемпотентно по id) */
 app.post("/api/v1/meetings/register", async (req, reply) => {
