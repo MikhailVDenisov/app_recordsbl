@@ -73,14 +73,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       String details = 'Сервер недоступен';
       if (e is DioException) {
+        final status = e.response?.statusCode;
+        if (status == 404) {
+          details =
+              'Сервер доступен, но не поддерживает проверку (маршрут /api/v1/health/check не найден). '
+              'Возможно, сервер не обновлён. Передайте это сообщение в поддержку.';
+        }
         final d = e.response?.data;
-        if (d is Map && d['message'] is String) {
+        if (status != 404 && d is Map && d['message'] is String) {
           details = d['message'] as String;
-        } else {
+        } else if (status != 404) {
           details = '${e.message ?? e.error ?? e.type}';
         }
       } else {
-        details = String(e);
+        details = e.toString();
       }
       if (!context.mounted) return;
       await showDialog<void>(
