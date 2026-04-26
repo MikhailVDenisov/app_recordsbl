@@ -61,157 +61,153 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       body: SafeArea(
         child: placesAsync.when(
           data: (places) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DropdownButtonFormField<String>(
-                            value: placeValue,
-                            decoration:
-                                const InputDecoration(labelText: 'Место встречи'),
-                            hint: const Text('Выберите из списка'),
-                            items: places
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e.name,
-                                    child: Text(e.name),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) async {
-                              if (v == null) return;
-                              setState(() => _place = v);
-                              await ref
-                                  .read(recordingControllerProvider.notifier)
-                                  .setMeetingPlace(v);
-                            },
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: placeValue,
+                    decoration: const InputDecoration(labelText: 'Место встречи'),
+                    hint: const Text('Выберите из списка'),
+                    items: places
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.name,
+                            child: Text(e.name),
                           ),
-                          const SizedBox(height: 24),
-                          Text(
-                            rec.phase == RecordingPhase.idle
-                                ? 'Готов к записи'
-                                : rec.phase == RecordingPhase.recording
-                                    ? 'Идёт запись (${_mbLabel(rec.recordedBytes)})'
-                                    : 'Пауза (${_mbLabel(rec.recordedBytes)})',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          Text('Время: ${_fmt(rec.duration)}'),
-                          if (rec.warning == DiskWarning.warn)
-                            const Text(
-                              'Внимание: на диске меньше 100 МБ свободного места.',
-                              style: TextStyle(color: Colors.orange),
-                            ),
-                          if (rec.blockedByDisk)
-                            const Text(
-                              'Запись остановлена: меньше 10 МБ на диске.',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          const SizedBox(height: 16),
-                          Text('Уровень (RMS): ${rec.rms.toStringAsFixed(4)}'),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              minHeight: 12,
-                              value: (rec.rms * 4).clamp(0, 1),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (active)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  rec.freeDiskMb != null
-                                      ? 'Свободно: ${formatGroupedMb(rec.freeDiskMb!)} МБ'
-                                      : 'Свободно: н/д',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        fontSize: 11,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
-                                ),
-                              ),
-                            ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              if (rec.phase == RecordingPhase.recording)
-                                FilledButton.tonal(
-                                  onPressed: () async {
-                                    await ref
-                                        .read(recordingControllerProvider.notifier)
-                                        .pause();
-                                  },
-                                  child: const Text('Пауза'),
-                                ),
-                              if (rec.phase == RecordingPhase.paused)
-                                FilledButton.tonal(
-                                  onPressed: () async {
-                                    await ref
-                                        .read(recordingControllerProvider.notifier)
-                                        .resume();
-                                  },
-                                  child: const Text('Продолжить'),
-                                ),
-                              FilledButton(
-                                onPressed: () async {
-                                  if (rec.phase == RecordingPhase.idle) {
-                                    if ((_place ?? '').trim().isEmpty) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Выберите место встречи'),
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-                                    final ok = await ref
-                                        .read(recordingControllerProvider.notifier)
-                                        .startRecording();
-                                    if (!ok && context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Не удалось начать запись'),
-                                        ),
-                                      );
-                                    }
-                                  } else {
-                                    await ref
-                                        .read(recordingControllerProvider.notifier)
-                                        .stopAndSave();
-                                    if (context.mounted) {
-                                      Navigator.of(context).pop();
-                                    }
-                                  }
-                                },
-                                child: Text(
-                                  rec.phase == RecordingPhase.idle ? 'Старт' : 'Стоп',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        )
+                        .toList(),
+                    onChanged: (v) async {
+                      if (v == null) return;
+                      setState(() => _place = v);
+                      await ref
+                          .read(recordingControllerProvider.notifier)
+                          .setMeetingPlace(v);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    rec.phase == RecordingPhase.idle
+                        ? 'Готов к записи'
+                        : rec.phase == RecordingPhase.recording
+                            ? 'Идёт запись (${_mbLabel(rec.recordedBytes)})'
+                            : 'Пауза (${_mbLabel(rec.recordedBytes)})',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Text('Время: ${_fmt(rec.duration)}'),
+                  if (rec.warning == DiskWarning.warn)
+                    const Text(
+                      'Внимание: на диске меньше 100 МБ свободного места.',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  if (rec.blockedByDisk)
+                    const Text(
+                      'Запись остановлена: меньше 10 МБ на диске.',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  const SizedBox(height: 16),
+                  Text('Уровень (RMS): ${rec.rms.toStringAsFixed(4)}'),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      minHeight: 12,
+                      value: (rec.rms * 4).clamp(0, 1),
                     ),
                   ),
-                );
-              },
+                  const SizedBox(height: 24),
+                  // Extra padding so content isn't hidden behind bottom buttons.
+                  SizedBox(height: (MediaQuery.paddingOf(context).bottom + 96)),
+                ],
+              ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Ошибка: $e')),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (active)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    rec.freeDiskMb != null
+                        ? 'Свободно: ${formatGroupedMb(rec.freeDiskMb!)} МБ'
+                        : 'Свободно: н/д',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  if (rec.phase == RecordingPhase.recording)
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        await ref
+                            .read(recordingControllerProvider.notifier)
+                            .pause();
+                      },
+                      child: const Text('Пауза'),
+                    ),
+                  if (rec.phase == RecordingPhase.paused)
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        await ref
+                            .read(recordingControllerProvider.notifier)
+                            .resume();
+                      },
+                      child: const Text('Продолжить'),
+                    ),
+                  FilledButton(
+                    onPressed: () async {
+                      if (rec.phase == RecordingPhase.idle) {
+                        if ((_place ?? '').trim().isEmpty) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Выберите место встречи'),
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                        final ok = await ref
+                            .read(recordingControllerProvider.notifier)
+                            .startRecording();
+                        if (!ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Не удалось начать запись'),
+                            ),
+                          );
+                        }
+                      } else {
+                        await ref
+                            .read(recordingControllerProvider.notifier)
+                            .stopAndSave();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                    child: Text(
+                      rec.phase == RecordingPhase.idle ? 'Старт' : 'Стоп',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../providers.dart';
 import 'app_branding.dart';
@@ -19,6 +20,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _server = TextEditingController();
   final _form = GlobalKey<FormState>();
   bool _checking = false;
+  String? _appVersionLabel;
 
   @override
   void initState() {
@@ -30,6 +32,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final s = ref.read(settingsRepositoryProvider);
     _login.text = await s.getLogin() ?? '';
     _server.text = await s.getServerUrl();
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _appVersionLabel = info.version;
+    } catch (_) {
+      _appVersionLabel = null;
+    }
     setState(() {});
   }
 
@@ -267,6 +275,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onPressed: _refreshMeetingPlaces,
                           child: const Text('Обновить список мест встречи'),
                         ),
+                        const SizedBox(height: 12),
+                        if (_appVersionLabel != null)
+                          Text(
+                            'Версия: $_appVersionLabel',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
                         const Spacer(),
                       ],
                     ),
