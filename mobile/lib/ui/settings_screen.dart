@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -21,11 +23,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _form = GlobalKey<FormState>();
   bool _checking = false;
   String? _appVersionLabel;
+  Timer? _autosaveDebounce;
+  bool _dirty = false;
+  DateTime? _lastSavedAt;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _login.addListener(_scheduleAutosave);
+    _server.addListener(_scheduleAutosave);
   }
 
   Future<void> _load() async {
@@ -34,7 +41,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _server.text = await s.getServerUrl();
     try {
       final info = await PackageInfo.fromPlatform();
-      _appVersionLabel = info.version;
+      final v = info.version;
+      final b = info.buildNumber;
+      _appVersionLabel = (b.isEmpty) ? v : '$v ($b)';
     } catch (_) {
       _appVersionLabel = null;
     }
@@ -43,12 +52,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   void dispose() {
+    _autosaveDebounce?.cancel();
     _login.dispose();
     _server.dispose();
     super.dispose();
   }
 
   String _normalizeBase(String raw) => raw.trim().replaceAll(RegExp(r'/$'), '');
+
+  void _scheduleAutosave() {
+    // If we are still loading initial values, avoid marking dirty.
+    if (!mounted) return;
+    _dirty = true;
+    _autosaveDebounce?.cancel();
+    _autosaveDebounce = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_autosaveIfValid());
+    });
+    setState(() {});
+  }
+
+  Future<void> _autosaveIfValid({bool immediate = false}) async {
+    if (!mounted) return;
+    if (!_dirty && !immediate) return;
+    final form = _form.currentState;
+    if (form == null) return;
+
+    // Don't save invalid input (user still typing).
+    if (!form.validate()) return;
+
+    final s = ref.read(settingsRepositoryProvider);
+    final login = _login.text.trim();
+    final server = _server.text.trim();
+    await s.setLogin(login);
+    await s.setServerUrl(server);
+
+    if (!mounted) return;
+    _dirty = false;
+    _lastSavedAt = DateTime.now();
+    setState(() {});
+  }
 
   ({String user, String support}) _friendlyNetworkError(Object e) {
     // Text for user + a compact block user can forward to support.
@@ -247,6 +289,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   }
                                   return null;
                                 },
+                                onFieldSubmitted: (_) => unawaited(_autosaveIfValid(immediate: true)),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -260,15 +303,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        FilledButton(
-                          onPressed: () async {
-                            if (!_form.currentState!.validate()) return;
-                            final s = ref.read(settingsRepositoryProvider);
-                            await s.setLogin(_login.text.trim());
-                            await s.setServerUrl(_server.text.trim());
-                            if (context.mounted) Navigator.of(context).pop();
-                          },
-                          child: const Text('Сохранить'),
+                        Text(
+                          _dirty
+                              ? 'Изменения будут сохранены автоматически…'
+                              : (_lastSavedAt != null
+                                  ? 'Сохранено'
+                                  : 'Изменения сохраняются автоматически'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton(

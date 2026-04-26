@@ -1,11 +1,15 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 /// Проверка свободного места (МБ).
 ///
 /// На Android — эвристика через `df` для `/data` (без плагина [disk_space]).
-/// На iOS без нативного API точного значения нет → [DiskWarning.okUnknown].
+/// На iOS/macOS — нативный вызов через MethodChannel (см. Runner/AppDelegate.swift).
 class DiskSpaceService {
   DiskSpaceService._();
+
+  static const MethodChannel _channel = MethodChannel('recordsbl/disk');
 
   static Future<double?> freeMegabytes() async {
     try {
@@ -21,6 +25,13 @@ class DiskSpaceService {
             }
           }
         }
+        return null;
+      }
+
+      if (Platform.isIOS || Platform.isMacOS) {
+        final freeBytes = await _channel.invokeMethod<int>('freeBytes');
+        if (freeBytes == null || freeBytes <= 0) return null;
+        return freeBytes / (1024 * 1024);
       }
     } catch (_) {}
     return null;

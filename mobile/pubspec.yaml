@@ -1,7 +1,7 @@
 name: recordsbl
 description: Meeting recorder with resumable S3 upload
 publish_to: "none"
-version: 1.1.0
+version: 1.1.1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
