@@ -76,6 +76,39 @@ app.get("/api/v1/meeting-places", async (_req, reply) => {
   }
 });
 
+app.get("/api/v1/meetings/recent", async (req, reply) => {
+  const parsed = z
+    .object({
+      limit: z.coerce.number().int().min(1).max(100).default(10),
+    })
+    .safeParse((req.query ?? {}) as unknown);
+  const limit = parsed.success ? parsed.data.limit : 10;
+
+  try {
+    const out = await query<{
+      user_id: string;
+      recording_started_at: string | null;
+      duration_seconds: number | null;
+    }>(
+      `SELECT user_id, recording_started_at, duration_seconds
+       FROM meetings
+       WHERE recording_started_at IS NOT NULL
+       ORDER BY recording_started_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+    return {
+      items: out.rows.map((r) => ({
+        userLogin: r.user_id,
+        startedAt: r.recording_started_at,
+        durationSeconds: r.duration_seconds ?? 0,
+      })),
+    };
+  } catch (e) {
+    return reply.code(500).send({ ok: false, message: String(e) });
+  }
+});
+
 /** Step 1: register meeting + init multipart on S3 (идемпотентно по id) */
 app.post("/api/v1/meetings/register", async (req, reply) => {
   const body = registerBody.safeParse(req.body);
