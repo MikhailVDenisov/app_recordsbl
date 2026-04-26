@@ -10,7 +10,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
-import '../core/meeting_place.dart';
 import '../data/meeting_model.dart';
 import '../data/meeting_repository.dart';
 import 'audio_session_config.dart';
@@ -121,7 +120,6 @@ class RecordingController extends StateNotifier<RecordingState> {
   }
 
   Future<void> setMeetingPlace(String place) async {
-    if (!kMeetingPlaces.contains(place)) return;
     _currentPlace = place;
     state = state.copyWith(meetingPlace: place);
   }
@@ -158,6 +156,9 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   Future<bool> startRecording() async {
     if (state.phase != RecordingPhase.idle) return false;
+    if (_currentPlace == null || _currentPlace!.trim().isEmpty) {
+      return false;
+    }
     final disk = await DiskSpaceService.check();
     if (disk == DiskWarning.critical) {
       state = state.copyWith(warning: disk, blockedByDisk: true);
@@ -173,7 +174,6 @@ class RecordingController extends StateNotifier<RecordingState> {
       }
     }
 
-    _currentPlace ??= kMeetingPlaces.first;
     _currentMeetingId = const Uuid().v4();
     _pausedAccum = Duration.zero;
     _startedAt = DateTime.now();
@@ -344,7 +344,7 @@ class RecordingController extends StateNotifier<RecordingState> {
     _segment.stop();
 
     final id = _currentMeetingId!;
-    final place = _currentPlace ?? kMeetingPlaces.first;
+    final place = _currentPlace ?? '';
     final started = _startedAt ?? DateTime.now();
     final duration = _totalElapsed().inSeconds;
     final path = _currentFilePath ?? (p.join((await getApplicationDocumentsDirectory()).path, '$id.flac'));

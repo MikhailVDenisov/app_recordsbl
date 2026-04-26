@@ -7,7 +7,7 @@ Future<Database> openAppDatabase() async {
   final path = p.join(dir.path, 'recordsbl.db');
   return openDatabase(
     path,
-    version: 2,
+    version: 3,
     onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE meetings (
@@ -31,6 +31,27 @@ Future<Database> openAppDatabase() async {
           retry_attempt INTEGER NOT NULL DEFAULT 0
         )
       ''');
+
+      await db.execute('''
+        CREATE TABLE meeting_places (
+          id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE,
+          updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+        )
+      ''');
+
+      await db.insert('meeting_places', {'id': 1, 'name': 'Вне офиса (ЦО)'});
+      await db.insert('meeting_places', {'id': 2, 'name': 'Переговорная "Байкал"'});
+      await db.insert('meeting_places', {'id': 3, 'name': 'Переговорная "Белуха"'});
+      await db.insert('meeting_places', {'id': 4, 'name': 'Переговорная "Катунь"'});
+      await db.insert('meeting_places', {'id': 5, 'name': 'Переговорная "Конференцзал"'});
+      await db.insert('meeting_places', {'id': 6, 'name': 'Переговорная "Красная поляна"'});
+      await db.insert('meeting_places', {'id': 7, 'name': 'Переговорная "Москва"'});
+      await db.insert('meeting_places', {'id': 8, 'name': 'Переговорная "Саяны"'});
+      await db.insert('meeting_places', {'id': 9, 'name': 'Переговорная "Север"'});
+      await db.insert('meeting_places', {'id': 10, 'name': 'Переговорная "Юг"'});
+      await db.insert('meeting_places', {'id': 11, 'name': 'Переговорная "Запад"'});
+      await db.insert('meeting_places', {'id': 12, 'name': 'Переговорная "Ярославль"'});
     },
     onUpgrade: (db, oldV, newV) async {
       if (oldV < 2) {
@@ -40,6 +61,27 @@ Future<Database> openAppDatabase() async {
         await db.execute(
           'ALTER TABLE meetings ADD COLUMN retry_attempt INTEGER NOT NULL DEFAULT 0',
         );
+      }
+      if (oldV < 3) {
+        await db.execute('''
+          CREATE TABLE meeting_places (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+          )
+        ''');
+        await db.insert('meeting_places', {'id': 1, 'name': 'Вне офиса (ЦО)'});
+        await db.insert('meeting_places', {'id': 2, 'name': 'Переговорная "Байкал"'});
+        await db.insert('meeting_places', {'id': 3, 'name': 'Переговорная "Белуха"'});
+        await db.insert('meeting_places', {'id': 4, 'name': 'Переговорная "Катунь"'});
+        await db.insert('meeting_places', {'id': 5, 'name': 'Переговорная "Конференцзал"'});
+        await db.insert('meeting_places', {'id': 6, 'name': 'Переговорная "Красная поляна"'});
+        await db.insert('meeting_places', {'id': 7, 'name': 'Переговорная "Москва"'});
+        await db.insert('meeting_places', {'id': 8, 'name': 'Переговорная "Саяны"'});
+        await db.insert('meeting_places', {'id': 9, 'name': 'Переговорная "Север"'});
+        await db.insert('meeting_places', {'id': 10, 'name': 'Переговорная "Юг"'});
+        await db.insert('meeting_places', {'id': 11, 'name': 'Переговорная "Запад"'});
+        await db.insert('meeting_places', {'id': 12, 'name': 'Переговорная "Ярославль"'});
       }
     },
   );

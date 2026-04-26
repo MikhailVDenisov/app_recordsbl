@@ -1,6 +1,7 @@
 import {
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
+  HeadBucketCommand,
   ListPartsCommand,
   PutObjectCommand,
   S3Client,
@@ -96,4 +97,14 @@ export async function putJsonSidecar(key: string, body: string) {
       ContentType: "application/json",
     })
   );
+}
+
+export async function checkS3Access(): Promise<{ ok: boolean; error?: string }> {
+  if (!bucket) return { ok: false, error: "S3_BUCKET is not set" };
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }

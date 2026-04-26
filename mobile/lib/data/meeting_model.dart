@@ -47,6 +47,7 @@ class Meeting {
   final int retryAttempt;
 
   Meeting copyWith({
+    String? meetingPlace,
     LocalUploadStatus? uploadStatus,
     int? uploadedBytes,
     int? fileSizeBytes,
@@ -59,11 +60,12 @@ class Meeting {
     DateTime? nextRetryAt,
     int? retryAttempt,
     String? serverBaseUrl,
+    String? userLogin,
   }) {
     return Meeting(
       id: id,
       filePath: filePath,
-      meetingPlace: meetingPlace,
+      meetingPlace: meetingPlace ?? this.meetingPlace,
       startedAt: startedAt,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       uploadStatus: uploadStatus ?? this.uploadStatus,
@@ -73,7 +75,7 @@ class Meeting {
       s3Key: s3Key ?? this.s3Key,
       completedPartsJson: completedPartsJson ?? this.completedPartsJson,
       lastError: lastError,
-      userLogin: userLogin,
+      userLogin: userLogin ?? this.userLogin,
       serverBaseUrl: serverBaseUrl ?? this.serverBaseUrl,
       recordingOffsetMs: recordingOffsetMs,
       incomplete: incomplete ?? this.incomplete,

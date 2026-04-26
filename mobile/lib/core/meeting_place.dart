@@ -1,9 +1,4 @@
-/// Фиксированный список мест встречи (ТЗ).
-const List<String> kMeetingPlaces = [
-  'Вне офиса',
-  'Переговорная "Красная поляна"',
-  'Переговорная "Саяны"',
-  'Переговорная "Юг"',
-  'Переговорная "Север"',
-  'Переговорная "Запад"',
-];
+/// Deprecated: список мест хранится в таблице `meeting_places` (SQLite).
+/// Файл оставлен для обратной совместимости импортов.
+@Deprecated('Use meeting_places table + MeetingPlacesRepository')
+const List<String> kMeetingPlaces = <String>[];

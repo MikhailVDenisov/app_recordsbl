@@ -16,7 +16,7 @@ class SettingsRepository {
 
   Future<String> getServerUrl() async {
     final p = await SharedPreferences.getInstance();
-    return p.getString(_kServer) ?? 'http://127.0.0.1:3000';
+    return p.getString(_kServer) ?? '';
   }
 
   Future<void> setServerUrl(String v) async {

@@ -33,6 +33,8 @@ class UploadService {
   final Dio _dio;
   final SettingsRepository _settings;
 
+  static final RegExp _corpLoginRe = RegExp(r'^[A-Za-z0-9-]{3}\.[A-Za-z0-9-]{2}$');
+
   ({String fileName, String contentType}) _uploadMeta(Meeting m) {
     final ext = p.extension(m.filePath).toLowerCase();
     final fileName = '${m.id}${ext.isEmpty ? '.wav' : ext}';
@@ -90,8 +92,21 @@ class UploadService {
       return;
     }
 
+    final login = (await _settings.getLogin())?.trim() ?? '';
+    if (!_corpLoginRe.hasMatch(login)) {
+      throw StateError('В настройках укажите логин в сети компании в формате XXX.XX');
+    }
+    final configuredServer = (await _settings.getServerUrl()).trim();
+    if (configuredServer.isEmpty) {
+      throw StateError('В настройках укажите адрес сервера');
+    }
+
     final base = await _resolveBaseUrl(meeting);
     var m = meeting;
+    if (m.userLogin != login) {
+      m = m.copyWith(userLogin: login);
+      await repo.upsert(m);
+    }
     if (m.serverBaseUrl.replaceAll(RegExp(r'/$'), '') != base) {
       m = m.copyWith(serverBaseUrl: base);
       await repo.upsert(m);
