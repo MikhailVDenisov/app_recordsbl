@@ -33,7 +33,7 @@ class UploadService {
   final Dio _dio;
   final SettingsRepository _settings;
 
-  static final RegExp _corpLoginRe = RegExp(r'^[A-Za-z0-9-]{3}\.[A-Za-z0-9-]{2}$');
+  static final RegExp _corpLoginRe = RegExp(r'^[A-Za-z0-9-]+\.[A-Za-z0-9-]+$');
 
   ({String fileName, String contentType}) _uploadMeta(Meeting m) {
     final ext = p.extension(m.filePath).toLowerCase();
@@ -94,7 +94,9 @@ class UploadService {
 
     final login = (await _settings.getLogin())?.trim() ?? '';
     if (!_corpLoginRe.hasMatch(login)) {
-      throw StateError('В настройках укажите логин в сети компании в формате XXX.XX');
+      throw StateError(
+        'В настройках укажите логин в сети компании в формате XXX.XX (латиница/цифры/тире; точка обязательна)',
+      );
     }
     final configuredServer = (await _settings.getServerUrl()).trim();
     if (configuredServer.isEmpty) {
